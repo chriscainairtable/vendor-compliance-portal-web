@@ -132,11 +132,12 @@ function ProjectStatusBadge({ status }) {
 }
 
 // ─── Login screen ─────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin, vendors }) {
+function LoginScreen({ onLogin, vendors, onPreviewAs }) {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
+  const [previewId, setPreviewId] = useState('');
 
   const handleLogin = () => {
     if (!email || !password) { setError('Email and password are required.'); return; }
@@ -177,6 +178,34 @@ function LoginScreen({ onLogin, vendors }) {
         <button onClick={handleLogin} disabled={loading} style={{ width: '100%', padding: '12px', borderRadius: '8px', background: loading ? '#d1d5db' : WMT_BLUE, color: 'white', border: 'none', fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer' }}>
           {loading ? 'Signing in…' : 'Sign in →'}
         </button>
+        {onPreviewAs && vendors.length > 0 && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '20px 0 16px' }}>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#9ca3af', whiteSpace: 'nowrap' }}>ADMIN PREVIEW</span>
+              <div style={{ flex: 1, height: '1px', background: '#e5e7eb' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={previewId}
+                onChange={e => setPreviewId(e.target.value)}
+                style={{ flex: 1, padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #e5e7eb', fontSize: '13px', color: previewId ? '#111827' : '#9ca3af', outline: 'none', fontFamily: 'inherit', background: 'white', cursor: 'pointer' }}
+              >
+                <option value="">Select a vendor…</option>
+                {vendors.filter(v => (v.getCellValue('Status')?.name || v.getCellValue('Status')) === 'Active').map(v => (
+                  <option key={v.id} value={v.id}>{v.getCellValueAsString('Vendor Name')}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => { const v = vendors.find(r => r.id === previewId); if (v) onPreviewAs(v); }}
+                disabled={!previewId}
+                style={{ padding: '9px 16px', borderRadius: '8px', background: previewId ? '#1d4ed8' : '#e5e7eb', color: previewId ? 'white' : '#9ca3af', border: 'none', fontSize: '13px', fontWeight: 700, cursor: previewId ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}
+              >
+                Preview →
+              </button>
+            </div>
+          </>
+        )}
         <p style={{ textAlign: 'center', fontSize: '11px', color: '#9ca3af', margin: '16px 0 0' }}>Walmart Supplier Compliance Portal · Demo</p>
       </div>
     </div>
@@ -731,7 +760,7 @@ export default function App() {
           <div style={previewVendor ? { paddingTop: '40px' } : {}}>
             {previewBanner}
             {!vendorRecord
-              ? <LoginScreen vendors={vendors} onLogin={setVendorRecord} />
+              ? <LoginScreen vendors={vendors} onLogin={setVendorRecord} onPreviewAs={handlePreviewAs} />
               : <VendorDashboard vendorRecord={vendorRecord} projects={projects} products={products} responses={responses} onLogout={() => { setVendorRecord(null); setPreviewVendor(null); }} onRefresh={refresh} />
             }
           </div>
