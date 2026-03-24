@@ -4,7 +4,6 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 const WMT_BLUE = '#0071CE';
 const GREEN    = '#20c933';
 const RED      = '#f82b60';
-const AMBER    = '#fcb400';
 const YELLOW   = '#FCB400';
 
 // ─── Record shim — makes REST API records behave like Airtable SDK records ────
@@ -230,7 +229,7 @@ function AttestationRow({ product, existingResponse, onSubmit, submitting }) {
   const isDone = !!existingType;
 
   return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px', borderLeft: isDone ? `3px solid ${existingType === 'Confirmed' ? GREEN : existingType === 'Flagged' ? RED : AMBER}` : '3px solid #e5e7eb' }}>
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', marginBottom: '8px', borderLeft: isDone ? `3px solid ${existingType === 'Confirmed' ? GREEN : existingType === 'Flagged' ? RED : YELLOW}` : '3px solid #e5e7eb' }}>
       <div onClick={() => setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer', background: expanded ? '#f9fafb' : 'white', userSelect: 'none' }}>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -258,7 +257,7 @@ function AttestationRow({ product, existingResponse, onSubmit, submitting }) {
               <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 600, color: '#374151' }}>FLAGGED INGREDIENT: <span style={{ color: '#ef4444' }}>{flagged}</span></p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
                 {['Confirmed', 'Flagged', 'Pending'].map(opt => (
-                  <button key={opt} onClick={() => setResponseType(opt)} style={{ padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: `1.5px solid ${responseType === opt ? (opt === 'Confirmed' ? GREEN : opt === 'Flagged' ? RED : AMBER) : '#e5e7eb'}`, background: responseType === opt ? (opt === 'Confirmed' ? '#d1f7c4' : opt === 'Flagged' ? '#ffdce5' : '#ffeab6') : 'white', color: responseType === opt ? (opt === 'Confirmed' ? '#338a17' : opt === 'Flagged' ? '#ba1e45' : '#b87503') : '#6b7280', cursor: 'pointer' }}>{opt}</button>
+                  <button key={opt} onClick={() => setResponseType(opt)} style={{ padding: '7px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, border: `1.5px solid ${responseType === opt ? (opt === 'Confirmed' ? GREEN : opt === 'Flagged' ? RED : YELLOW) : '#e5e7eb'}`, background: responseType === opt ? (opt === 'Confirmed' ? '#d1f7c4' : opt === 'Flagged' ? '#ffdce5' : '#ffeab6') : 'white', color: responseType === opt ? (opt === 'Confirmed' ? '#338a17' : opt === 'Flagged' ? '#ba1e45' : '#b87503') : '#6b7280', cursor: 'pointer' }}>{opt}</button>
                 ))}
               </div>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder={responseType === 'Flagged' ? 'Required: explain the issue and remediation plan' : 'Optional notes'} rows={2} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e5e7eb', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
@@ -283,9 +282,12 @@ function ProjectCard({ project, products, responses, vendorRecord, onRefresh, on
   const dueDate     = project.getCellValueAsString('Due Date');
   const instructions = project.getCellValueAsString('Instructions');
 
-  const myProducts = products.filter(p => {
-    return matchesId(p.getCellValue('Vendor'), vendorRecord.id);
-  });
+  // Use project-scoped product list if defined, otherwise all vendor products
+  const projectProductIds = project.getCellValue('Products');
+  const myProducts = products.filter(p =>
+    matchesId(p.getCellValue('Vendor'), vendorRecord.id) &&
+    (!projectProductIds || projectProductIds.length === 0 || matchesId(projectProductIds, p.id))
+  );
   const myResponses = responses.filter(r =>
     matchesId(r.getCellValue('Project'), project.id) && matchesId(r.getCellValue('Vendor'), vendorRecord.id)
   );
@@ -298,13 +300,15 @@ function ProjectCard({ project, products, responses, vendorRecord, onRefresh, on
   const totalItems = myProducts.length;
   const doneItems  = myProducts.filter(p => responseByProduct[p.id]).length;
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleSubmit = async (productId, responseType, notes) => {
     if (submitting) return;
     setSubmitting(true);
+    setSubmitError('');
     try {
       const vendorName = vendorRecord.getCellValueAsString('Vendor Name');
-      await fetch('/api/responses', {
+      const res = await fetch('/api/responses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -320,8 +324,9 @@ function ProjectCard({ project, products, responses, vendorRecord, onRefresh, on
           },
         }),
       });
+      if (!res.ok) throw new Error('Submission failed — please try again.');
       await onRefresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { setSubmitError(e.message); }
     finally { setSubmitting(false); }
   };
 
@@ -349,6 +354,7 @@ function ProjectCard({ project, products, responses, vendorRecord, onRefresh, on
               <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: 1.6 }}>{instructions}</p>
             </div>
           )}
+          {submitError && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '10px 12px', fontSize: '13px', color: '#dc2626', marginBottom: '12px' }}>{submitError}</div>}
           {myProducts.length > 0 ? (
             <div>
               <p style={{ margin: '0 0 10px', fontSize: '12px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Products ({myProducts.length})</p>
@@ -514,7 +520,7 @@ function AdminPanel({ vendors, projects, products, responses, onPreviewAs }) {
                 {[
                   { label: 'Confirmed', value: confirmedResponses, color: GREEN },
                   { label: 'Flagged',   value: flaggedResponses,   color: RED },
-                  { label: 'Pending',   value: pendingResponses,   color: AMBER },
+                  { label: 'Pending',   value: pendingResponses,   color: YELLOW },
                 ].map(item => {
                   const pct = totalResponses > 0 ? Math.round((item.value / totalResponses) * 100) : 0;
                   return (
@@ -595,7 +601,7 @@ function AdminPanel({ vendors, projects, products, responses, onPreviewAs }) {
                       {[
                         { label: 'Confirmed',   value: v.confirmed,                color: GREEN },
                         { label: 'Flagged',     value: v.flagged,                  color: RED },
-                        { label: 'Pending',     value: v.pending,                  color: AMBER },
+                        { label: 'Pending',     value: v.pending,                  color: YELLOW },
                         { label: 'No Response', value: v.total - v.submitted,      color: '#9ca3af' },
                       ].map(s => (
                         <div key={s.label} style={{ background: '#f9fafb', borderRadius: '6px', padding: '10px 14px', textAlign: 'center' }}>
