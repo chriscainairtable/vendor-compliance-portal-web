@@ -67,29 +67,24 @@ function useData() {
 const ONBOARDING_KEY = 'vcp_onboarding_seen';
 const ONBOARDING_STEPS = [
   {
-    emoji: '⚠️',
-    title: 'The Risk Profile Is Real',
-    body: 'Walmart manages compliance across 100,000+ suppliers globally. Late or missing attestations — ingredient labeling, chemical compliance, RSPO certification, supplier codes of conduct — carry direct regulatory exposure: FTC fines, CPSC penalties, Prop 65 violations, import holds. Global Governance tracks this manually today, across email threads and spreadsheets.',
-  },
-  {
-    emoji: '🏛',
-    title: 'What This Demo Shows',
-    body: 'Two sides of a supplier compliance system built on Airtable: what vendors see when submitting attestations, and what Walmart Global Governance sees when tracking compliance in real time. The governance team gets live risk ratings, flagged items, deadline pressure, and a full audit trail — in one place.',
-  },
-  {
-    emoji: '🔒',
-    title: 'Vendor Experience',
-    body: 'Vendors log in and see only their assigned projects and products. They confirm, flag, or escalate each compliance item — with notes and timestamps. In production this authenticates through Microsoft Azure AD — vendors use their existing Microsoft identity, nothing new to provision across a supplier base of any size.',
+    emoji: '🗂',
+    title: 'What You\'re Looking At',
+    body: 'A two-sided supplier compliance portal built on Airtable. Walmart Global Governance sees a live dashboard — risk by vendor, progress by project, every flagged item in one place. Vendors get a scoped login that shows only their products and deadlines. Same base, two completely different experiences.',
   },
   {
     emoji: '⚙️',
-    title: 'The Architecture',
-    body: 'A service account handles all Airtable API calls server-side, hosted in Microsoft Azure. The governance team uses Airtable natively. Vendor-facing access routes through the service account — so the solution scales across hundreds or thousands of suppliers without adding per-user infrastructure.',
+    title: 'How It\'s Built',
+    body: 'One service account PAT lives server-side — never touches the client. Vendor login is a lookup against the Vendors table; in production that\'s a call to Azure AD / MSAL instead. This demo is hosted on Vercel. In a WMT deployment it\'d be Azure Functions — same pattern, different runtime. Airtable is the data layer and automation engine throughout.',
+  },
+  {
+    emoji: '📐',
+    title: 'Why the Pattern Scales',
+    body: 'Walmart has 100k+ suppliers. One service account handles all external traffic — the constraint is API rate limits, not user count. No per-vendor provisioning, no seat math. Global Governance uses Airtable natively. Everyone else routes through the portal. The system gets more valuable as vendor count grows.',
   },
   {
     emoji: '💡',
-    title: 'A Different Commercial Motion',
-    body: 'This isn\'t a seats conversation — it\'s a solution conversation. "Vendor Compliance Portal — replace the spreadsheet, own the audit trail, surface risk before it becomes a fine." That\'s a line item a CPO or Chief Compliance Officer can approve. The question: how do we price and package this as a repeatable motion across enterprise accounts with large external-facing workflows?',
+    title: 'The Conversation to Have',
+    body: 'Ask: who owns this spreadsheet today? That\'s your sponsor. This isn\'t a seats pitch — it\'s a solution pitch. "Replace the manual attestation process, own the audit trail, surface regulatory risk before it becomes a fine." Price the system. The seats follow.',
   },
 ];
 
@@ -158,7 +153,7 @@ function LoginScreen({ onLogin, vendors, onPreviewAs }) {
     setTimeout(() => {
       setLoading(false);
       if (match) onLogin(match);
-      else setError('Invalid credentials or account inactive. Try: compliance@sunrisefoods.com / sunrise2025');
+      else setError('Invalid credentials or account inactive. Try: compliance@sunrisefoods.com / sunrise2026');
     }, 400);
   };
 
