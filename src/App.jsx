@@ -22,6 +22,13 @@ function wrapRecord(record) {
   };
 }
 
+// Linked record fields may return [{id,name}] objects OR plain ["recXXX"] strings
+// depending on how the record was written. This handles both.
+function matchesId(linkedVal, id) {
+  if (!linkedVal || !Array.isArray(linkedVal)) return false;
+  return linkedVal.some(v => (v?.id ?? v) === id);
+}
+
 // ─── Data hook — fetches all tables, polls every 15s ─────────────────────────
 function useData() {
   const [data, setData]       = useState(null);
@@ -282,15 +289,11 @@ function ProjectCard({ project, products, responses, vendorRecord, onRefresh, on
   const instructions = project.getCellValueAsString('Instructions');
 
   const myProducts = products.filter(p => {
-    const linked = p.getCellValue('Vendor');
-    return linked && Array.isArray(linked) && linked.filter(Boolean).some(v => v.id === vendorRecord.id);
+    return matchesId(p.getCellValue('Vendor'), vendorRecord.id);
   });
-  const myResponses = responses.filter(r => {
-    const proj = r.getCellValue('Project');
-    const vend = r.getCellValue('Vendor');
-    return proj && Array.isArray(proj) && proj.filter(Boolean).some(p => p.id === project.id)
-      && vend && Array.isArray(vend) && vend.filter(Boolean).some(v => v.id === vendorRecord.id);
-  });
+  const myResponses = responses.filter(r =>
+    matchesId(r.getCellValue('Project'), project.id) && matchesId(r.getCellValue('Vendor'), vendorRecord.id)
+  );
   const responseByProduct = {};
   for (const r of myResponses) {
     const prods = r.getCellValue('Product');
@@ -371,8 +374,7 @@ function VendorDashboard({ vendorRecord, projects, products, responses, onLogout
   const [expandedId, setExpandedId] = useState(null);
 
   const myProjects   = projects.filter(proj => {
-    const assigned = proj.getCellValue('Assigned Vendors');
-    return assigned && Array.isArray(assigned) && assigned.filter(Boolean).some(v => v.id === vendorRecord.id);
+    return matchesId(proj.getCellValue('Assigned Vendors'), vendorRecord.id);
   });
   const activeCount  = myProjects.filter(p => p.getCellValueAsString('Status') === 'Active').length;
   const overdueCount = myProjects.filter(p => p.getCellValueAsString('Status') === 'Overdue').length;
@@ -433,9 +435,9 @@ function AdminPanel({ vendors, projects, products, responses, onPreviewAs }) {
   const overdueProjects   = projects.filter(p => p.getCellValueAsString('Status') === 'Overdue').length;
 
   const vendorSummaries = useMemo(() => activeVendors.map(v => {
-    const myProducts  = products.filter(p => { const l = p.getCellValue('Vendor'); return l && Array.isArray(l) && l.filter(Boolean).some(x => x.id === v.id); });
-    const myResponses = responses.filter(r => { const l = r.getCellValue('Vendor'); return l && Array.isArray(l) && l.filter(Boolean).some(x => x.id === v.id); });
-    const myProjects  = projects.filter(proj => { const l = proj.getCellValue('Assigned Vendors'); return l && Array.isArray(l) && l.filter(Boolean).some(x => x.id === v.id); });
+    const myProducts  = products.filter(p    => matchesId(p.getCellValue('Vendor'), v.id));
+    const myResponses = responses.filter(r   => matchesId(r.getCellValue('Vendor'), v.id));
+    const myProjects  = projects.filter(proj => matchesId(proj.getCellValue('Assigned Vendors'), v.id));
     const confirmed   = myResponses.filter(r => r.getCellValueAsString('Response Type') === 'Confirmed').length;
     const flagged     = myResponses.filter(r => r.getCellValueAsString('Response Type') === 'Flagged').length;
     const pending     = myResponses.filter(r => r.getCellValueAsString('Response Type') === 'Pending').length;
@@ -448,10 +450,10 @@ function AdminPanel({ vendors, projects, products, responses, onPreviewAs }) {
   }), [activeVendors, products, responses, projects]);
 
   const projectSummaries = useMemo(() => projects.map(proj => {
-    const projResponses = responses.filter(r => { const l = r.getCellValue('Project'); return l && Array.isArray(l) && l.filter(Boolean).some(p => p.id === proj.id); });
+    const projResponses = responses.filter(r => matchesId(r.getCellValue('Project'), proj.id));
     const assigned      = proj.getCellValue('Assigned Vendors') || [];
     const totalV        = assigned.filter(Boolean).length;
-    const responded     = new Set(projResponses.map(r => { const l = r.getCellValue('Vendor'); return l && l[0]?.id; }).filter(Boolean)).size;
+    const responded     = new Set(projResponses.map(r => { const l = r.getCellValue('Vendor'); return l && (l[0]?.id ?? l[0]); }).filter(Boolean)).size;
     const flaggedCount  = projResponses.filter(r => r.getCellValueAsString('Response Type') === 'Flagged').length;
     return { id: proj.id, name: proj.getCellValueAsString('Project Name'), status: proj.getCellValueAsString('Status'), type: proj.getCellValueAsString('Type'), dueDate: proj.getCellValueAsString('Due Date'), totalVendors: totalV, responded, flaggedCount, pct: totalV > 0 ? Math.round((responded / totalV) * 100) : 0 };
   }), [projects, responses]);
