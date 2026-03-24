@@ -292,7 +292,7 @@ function ProjectCard({ project, products, responses, vendorRecord, onRefresh, on
   const responseByProduct = {};
   for (const r of myResponses) {
     const prods = r.getCellValue('Product');
-    if (prods && Array.isArray(prods)) prods.filter(Boolean).forEach(p => { responseByProduct[p.id] = r; });
+    if (prods && Array.isArray(prods)) prods.filter(Boolean).forEach(p => { responseByProduct[p?.id ?? p] = r; });
   }
 
   const totalItems = myProducts.length;
